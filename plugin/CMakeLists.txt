@@ -32,6 +32,11 @@ set(CUDA_SRCS)
 set(COMMON_SRCS)
 
 set(PLUGIN_LISTS
+    embLayerNormPlugin
+    fcPlugin
+    geluPlugin
+    bertQKVToContextPlugin
+    skipLayerNormPlugin
     nmsPlugin
     normalizePlugin
     priorBoxPlugin
@@ -43,9 +48,16 @@ set(PLUGIN_LISTS
     flattenConcat
     cropAndResizePlugin
     proposalPlugin
+    batchTilePlugin
+    detectionLayerPlugin
+    proposalLayerPlugin
+    pyramidROIAlignPlugin
+    resizeNearestPlugin
+    specialSlicePlugin
+    instanceNormalizationPlugin
     )
 
-include_directories(common common/kernels)
+include_directories(common common/kernels ../samples/common)
 
 foreach(PLUGIN_ITER ${PLUGIN_LISTS})
     include_directories(${PLUGIN_ITER})
@@ -56,6 +68,7 @@ endforeach(PLUGIN_ITER)
 add_subdirectory(common)
 
 list(APPEND PLUGIN_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/InferPlugin.cpp")
+list(APPEND PLUGIN_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../samples/common/logger.cpp")
 
 ################################## SHARED LIBRARY #######################################
 
@@ -80,13 +93,21 @@ set_target_properties(${SHARED_TARGET} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${TRT_BIN_DIR}"
 )
 
-set_target_properties(${SHARED_TARGET} PROPERTIES LINK_FLAGS "-Wl,--exclude-libs,ALL -Wl,--version-script=${PLUGIN_EXPORT_MAP}")
+set_target_properties(${SHARED_TARGET} PROPERTIES LINK_FLAGS "-Wl,--exclude-libs,ALL -Wl,--version-script=${PLUGIN_EXPORT_MAP} -Wl,--no-undefined")
 
 set_target_properties(${SHARED_TARGET} PROPERTIES DEBUG_POSTFIX ${TRT_DEBUG_POSTFIX})
 
 set_target_properties(${SHARED_TARGET} PROPERTIES VERSION ${TRT_VERSION} SOVERSION ${TRT_SOVERSION} )
 
 set_property(TARGET ${SHARED_TARGET} PROPERTY CUDA_STANDARD 11)
+
+target_link_libraries(${SHARED_TARGET}
+    ${CUBLAS_LIB}
+    ${CUBLASLT_LIB}
+    ${CUDART_LIB}
+    ${CUDNN_LIB}
+    nvinfer
+)
 
 ################################## STATIC LIBRARY #######################################
 

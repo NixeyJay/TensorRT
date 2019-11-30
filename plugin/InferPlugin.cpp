@@ -34,17 +34,22 @@ using namespace nvinfer1::plugin;
 #include "regionPlugin/regionPlugin.h"
 #include "reorgPlugin/reorgPlugin.h"
 
+#include "batchTilePlugin/batchTilePlugin.h"
+#include "detectionLayerPlugin/detectionLayerPlugin.h"
+#include "proposalLayerPlugin/proposalLayerPlugin.h"
+#include "pyramidROIAlignPlugin/pyramidROIAlignPlugin.h"
+#include "resizeNearestPlugin/resizeNearestPlugin.h"
+#include "specialSlicePlugin/specialSlicePlugin.h"
+#include "instanceNormalizationPlugin/instanceNormalizationPlugin.h"
+
 using nvinfer1::plugin::RPROIParams;
 
 namespace nvinfer1
 {
 
-namespace internal
-{
-extern ILogger* gLogger;
-}
 namespace plugin
 {
+ILogger* gLogger{};
 
 // Instances of this class are statically constructed in initializePlugin.
 // This ensures that each plugin is only registered a single time, as further calls to
@@ -60,18 +65,18 @@ public:
         bool status = getPluginRegistry()->registerCreator(*mCreator, libNamespace);
         if (logger)
         {
-            nvinfer1::internal::gLogger = static_cast<nvinfer1::ILogger*>(logger);
+            nvinfer1::plugin::gLogger = static_cast<nvinfer1::ILogger*>(logger);
             if (!status)
             {
                 std::string errorMsg{"Could not register plugin creator:  " + std::string(mCreator->getPluginName())
                     + " in namespace: " + std::string{mCreator->getPluginNamespace()}};
-                nvinfer1::internal::gLogger->log(ILogger::Severity::kERROR, errorMsg.c_str());
+                nvinfer1::plugin::gLogger->log(ILogger::Severity::kERROR, errorMsg.c_str());
             }
             else
             {
                 std::string verboseMsg{
                     "Plugin Creator registration succeeded - " + std::string{mCreator->getPluginName()}};
-                nvinfer1::internal::gLogger->log(ILogger::Severity::kVERBOSE, verboseMsg.c_str());
+                nvinfer1::plugin::gLogger->log(ILogger::Severity::kVERBOSE, verboseMsg.c_str());
             }
         }
     }
@@ -106,6 +111,13 @@ bool initLibNvInferPlugins(void* logger, const char* libNamespace)
     initializePlugin<nvinfer1::plugin::FlattenConcatPluginCreator>(logger, libNamespace);
     initializePlugin<nvinfer1::plugin::CropAndResizePluginCreator>(logger, libNamespace);
     initializePlugin<nvinfer1::plugin::ProposalPluginCreator>(logger, libNamespace);
+    initializePlugin<nvinfer1::plugin::BatchTilePluginCreator>(logger, libNamespace);
+    initializePlugin<nvinfer1::plugin::DetectionLayerPluginCreator>(logger, libNamespace);
+    initializePlugin<nvinfer1::plugin::ProposalLayerPluginCreator>(logger, libNamespace);
+    initializePlugin<nvinfer1::plugin::PyramidROIAlignPluginCreator>(logger, libNamespace);
+    initializePlugin<nvinfer1::plugin::ResizeNearestPluginCreator>(logger, libNamespace);
+    initializePlugin<nvinfer1::plugin::SpecialSlicePluginCreator>(logger, libNamespace);
+    initializePlugin<nvinfer1::plugin::InstanceNormalizationPluginCreator>(logger, libNamespace);
     return true;
 }
 } // extern "C"

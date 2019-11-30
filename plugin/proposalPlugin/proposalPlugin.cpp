@@ -32,7 +32,7 @@ namespace
 static const char* PROPOSAL_PLUGIN_VERSION{"1"};
 static const char* PROPOSAL_PLUGIN_NAME{"Proposal"};
 static const float RPN_STD_SCALING{1.0f};
-}
+} // namespace
 
 // Static class fields initialization
 PluginFieldCollection ProposalPluginCreator::mFC{};
@@ -145,9 +145,7 @@ ProposalPlugin::ProposalPlugin(const std::string name, const void* serial_buf, s
     ASSERT(a == d + serial_size);
 }
 
-ProposalPlugin::~ProposalPlugin()
-{
-}
+ProposalPlugin::~ProposalPlugin() {}
 
 const char* ProposalPlugin::getPluginType() const
 {
@@ -247,9 +245,7 @@ bool ProposalPlugin::supportsFormat(DataType type, PluginFormat format) const
     }
 }
 
-void ProposalPlugin::terminate()
-{
-}
+void ProposalPlugin::terminate() {}
 
 void ProposalPlugin::destroy()
 {
@@ -316,9 +312,7 @@ void ProposalPlugin::attachToContext(
 }
 
 // Detach the plugin object from its execution context.
-void ProposalPlugin::detachFromContext()
-{
-}
+void ProposalPlugin::detachFromContext() {}
 
 ProposalPluginCreator::ProposalPluginCreator()
 {
@@ -335,9 +329,7 @@ ProposalPluginCreator::ProposalPluginCreator()
     mFC.fields = mPluginAttributes.data();
 }
 
-ProposalPluginCreator::~ProposalPluginCreator()
-{
-}
+ProposalPluginCreator::~ProposalPluginCreator() {}
 
 const char* ProposalPluginCreator::getPluginName() const
 {
@@ -358,8 +350,8 @@ IPluginV2Ext* ProposalPluginCreator::createPlugin(const char* name, const Plugin
 {
     const PluginField* fields = fc->fields;
     int nbFields = fc->nbFields;
-    int input_height, input_width, rpn_stride, pre_nms_top_n, post_nms_top_n;
-    float roi_min_size, nms_iou_threshold;
+    int input_height = 0, input_width = 0, rpn_stride = 0, pre_nms_top_n = 0, post_nms_top_n = 0;
+    float roi_min_size = 0.0f, nms_iou_threshold = 0.0f;
     std::vector<float> anchor_sizes;
     std::vector<float> anchor_ratios;
 
@@ -371,43 +363,36 @@ IPluginV2Ext* ProposalPluginCreator::createPlugin(const char* name, const Plugin
         {
             ASSERT(fields[i].type == PluginFieldType::kINT32);
             input_height = *(static_cast<const int*>(fields[i].data));
-            ASSERT(input_height > 0);
         }
         else if (!strcmp(attr_name, "input_width"))
         {
             ASSERT(fields[i].type == PluginFieldType::kINT32);
             input_width = *(static_cast<const int*>(fields[i].data));
-            ASSERT(input_width > 0);
         }
         else if (!strcmp(attr_name, "rpn_stride"))
         {
             ASSERT(fields[i].type == PluginFieldType::kINT32);
             rpn_stride = *(static_cast<const int*>(fields[i].data));
-            ASSERT(rpn_stride > 0);
         }
         else if (!strcmp(attr_name, "roi_min_size"))
         {
             ASSERT(fields[i].type == PluginFieldType::kFLOAT32);
             roi_min_size = *(static_cast<const float*>(fields[i].data));
-            ASSERT(roi_min_size >= 0.0f);
         }
         else if (!strcmp(attr_name, "nms_iou_threshold"))
         {
             ASSERT(fields[i].type == PluginFieldType::kFLOAT32);
             nms_iou_threshold = *(static_cast<const float*>(fields[i].data));
-            ASSERT(nms_iou_threshold > 0.0f);
         }
         else if (!strcmp(attr_name, "pre_nms_top_n"))
         {
             ASSERT(fields[i].type == PluginFieldType::kINT32);
             pre_nms_top_n = *(static_cast<const int*>(fields[i].data));
-            ASSERT(pre_nms_top_n > 0);
         }
         else if (!strcmp(attr_name, "post_nms_top_n"))
         {
             ASSERT(fields[i].type == PluginFieldType::kINT32);
             post_nms_top_n = *(static_cast<const int*>(fields[i].data));
-            ASSERT(post_nms_top_n > 0);
         }
         else if (!strcmp(attr_name, "anchor_sizes"))
         {
@@ -435,6 +420,9 @@ IPluginV2Ext* ProposalPluginCreator::createPlugin(const char* name, const Plugin
             }
         }
     }
+
+    ASSERT(input_height > 0 && input_width > 0 && rpn_stride > 0 && pre_nms_top_n > 0 && post_nms_top_n
+        && roi_min_size >= 0.0f && nms_iou_threshold > 0.0f);
 
     IPluginV2Ext* plugin = new ProposalPlugin(name, input_height, input_width, RPN_STD_SCALING, rpn_stride,
         roi_min_size, nms_iou_threshold, pre_nms_top_n, post_nms_top_n, &anchor_sizes[0], anchor_sizes.size(),

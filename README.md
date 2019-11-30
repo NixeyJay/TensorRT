@@ -15,9 +15,9 @@ To build the TensorRT OSS components, ensure you meet the following package requ
 
 * [CUDA](https://developer.nvidia.com/cuda-toolkit)
   * Recommended versions:
-  * [cuda-10.1](https://developer.nvidia.com/cuda-10.1-download-archive-base) + cuDNN-7.5
-  * [cuda-10.0](https://developer.nvidia.com/cuda-10.0-download-archive) + cuDNN-7.5
-  * [cuda-9.0](https://developer.nvidia.com/cuda-90-download-archive) + cuDNN 7.3
+  * [cuda-10.1](https://developer.nvidia.com/cuda-10.1-download-archive-base) + cuDNN-7.6
+  * [cuda-10.0](https://developer.nvidia.com/cuda-10.0-download-archive) + cuDNN-7.6
+  * [cuda-9.0](https://developer.nvidia.com/cuda-90-download-archive) + cuDNN 7.6
 
 * [GNU Make](https://ftp.gnu.org/gnu/make/) >= v4.1
 
@@ -45,12 +45,11 @@ To build the TensorRT OSS components, ensure you meet the following package requ
 
 **TensorRT Release**
 
-* [TensorRT](https://developer.nvidia.com/nvidia-tensorrt-5x-download) v5.1.5
-
+* [TensorRT](https://developer.nvidia.com/nvidia-tensorrt-download) v6.0.1
 
 NOTE: Along with the TensorRT OSS components, the following source packages will also be downloaded, and they are not required to be installed on the system.
 
-- [ONNX-TensorRT](https://github.com/onnx/onnx-tensorrt) v5.1
+- [ONNX-TensorRT](https://github.com/onnx/onnx-tensorrt) v6.0
 - [CUB](http://nvlabs.github.io/cub/) v1.8.0
 - [Protobuf](https://github.com/protocolbuffers/protobuf.git) v3.8.x
 
@@ -60,7 +59,7 @@ NOTE: Along with the TensorRT OSS components, the following source packages will
 1. #### Download TensorRT OSS sources.
 
 	```bash
-	git clone -b release/5.1 https://github.com/nvidia/TensorRT TensorRT
+	git clone -b master https://github.com/nvidia/TensorRT TensorRT
 	cd TensorRT
 	git submodule update --init --recursive
 	export TRT_SOURCE=`pwd`
@@ -68,26 +67,28 @@ NOTE: Along with the TensorRT OSS components, the following source packages will
 
 2. #### Download the TensorRT binary release.
 
-	To build the TensorRT OSS, obtain the corresponding TensorRT 5.1.5 binary release from [NVidia Developer Zone](https://developer.nvidia.com/nvidia-tensorrt-5x-download). For a list of key features, known and fixed issues, see the [TensorRT 5.1.5 Release Notes](https://docs.nvidia.com/deeplearning/sdk/tensorrt-release-notes/tensorrt-5.html#rel_5-1-5).
+	To build the TensorRT OSS, obtain the corresponding TensorRT 6.0.1 binary release from [NVidia Developer Zone](https://developer.nvidia.com/nvidia-tensorrt-download). For a list of key features, known and fixed issues, see the [TensorRT 6.0.1 Release Notes](https://docs.nvidia.com/deeplearning/sdk/tensorrt-release-notes/index.html).
 
 	**Example: Ubuntu 18.04 with cuda-10.1**
 
-	Download and extract the *TensorRT 5.1.5.0 GA for Ubuntu 18.04 and CUDA 10.1 tar package*
+	Download and extract the *TensorRT 6.0.1.5 GA for Ubuntu 18.04 and CUDA 10.1 tar package*
 	```bash
 	cd ~/Downloads
-	# Download TensorRT-5.1.5.0.Ubuntu-18.04.2.x86_64-gnu.cuda-10.1.cudnn7.5.tar.gz
-	tar -xvzf TensorRT-5.1.5.0.Ubuntu-18.04.2.x86_64-gnu.cuda-10.1.cudnn7.5.tar.gz
-	export TRT_RELEASE=`pwd`/TensorRT-5.1.5.0
+	# Download TensorRT-6.0.1.5.Ubuntu-18.04.x86_64-gnu.cuda-10.1.cudnn7.6.tar.gz
+	tar -xvzf TensorRT-6.0.1.5.Ubuntu-18.04.x86_64-gnu.cuda-10.1.cudnn7.6.tar.gz
+	export TRT_RELEASE=`pwd`/TensorRT-6.0.1.5
+	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$TRT_RELEASE/lib
 	```
 
 	**Example: CentOS/RedHat 7 with cuda-9.0**
 
-	Download and extract the *TensorRT 5.1.5.0 GA for CentOS/RedHat 7 and CUDA 9.0 tar package*
+	Download and extract the *TensorRT 6.0.1.5 GA for CentOS/RedHat 7 and CUDA 9.0 tar package*
 	```bash
 	cd ~/Downloads
-	# Download TensorRT-5.1.5.0.Red-Hat.x86_64-gnu.cuda-9.0.cudnn7.5.tar.gz
-	tar -xvzf TensorRT-5.1.5.0.Red-Hat.x86_64-gnu.cuda-9.0.cudnn7.5.tar.gz
-	export TRT_RELEASE=~/Downloads/TensorRT-5.1.5.0
+	# Download TensorRT-6.0.1.5.Red-Hat.x86_64-gnu.cuda-9.0.cudnn7.6.tar.gz
+	tar -xvzf TensorRT-6.0.1.5.Red-Hat.x86_64-gnu.cuda-9.0.cudnn7.6.tar.gz
+	export TRT_RELEASE=`pwd`/TensorRT-6.0.1.5
+	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$TRT_RELEASE/lib
 	```
 
 ## Setting Up The Build Environment
@@ -134,20 +135,9 @@ NOTE: Along with the TensorRT OSS components, the following source packages will
 
 	> NOTE:
 	> 1. The default CUDA version used by CMake is 10.1. To override this, for example to 9.0, append `-DCUDA_VERSION=9.0` to the cmake command.
-	> 2. If linking against the plugin and parser libraries obtained from TensorRT release (default behavior) is causing compatibility issues with TensorRT OSS, try building the OSS components separately in the following dependency order:
+	> 2. Samples may fail to link on CentOS7. To work around this create the following symbolic link:
 	> ```bash
-	> # 1. Build Plugins
-	> cmake .. -DTRT_LIB_DIR=$TRT_RELEASE/lib -DTRT_BIN_DIR=`pwd`/out \
-	>          -DBUILD_PLUGINS=ON -DBUILD_PARSERS=OFF -DBUILD_SAMPLES=OFF
-	> make -j$(nproc)
-	> # 2. Build Parsers
-	> cmake .. -DTRT_LIB_DIR=$TRT_RELEASE/lib -DTRT_BIN_DIR=`pwd`/out \
-	>          -DBUILD_PLUGINS=OFF -DBUILD_PARSERS=ON -DBUILD_SAMPLES=OFF
-	> make -j$(nproc)
-	> # 3. Build Samples
-	> cmake .. -DTRT_LIB_DIR=$TRT_RELEASE/lib -DTRT_BIN_DIR=`pwd`/out \
-	>          -DBUILD_PLUGINS=OFF -DBUILD_PARSERS=OFF -DBUILD_SAMPLES=ON
-	> make -j$(nproc)
+	> ln -s $TRT_BIN_DIR/libnvinfer_plugin.so $TRT_BIN_DIR/libnvinfer_plugin.so.6
 	> ```
 
 	The required CMake arguments are:
@@ -176,6 +166,10 @@ NOTE: Along with the TensorRT OSS components, the following source packages will
 
 	Other build options with limited applicability:
 
+	- `NVINTERNAL`: Used by TensorRT team for internal builds. Values consists of [`OFF`] | `ON`.
+
+	- `PROTOBUF_INTERNAL_VERSION`: The version of protobuf to use, for example [`10.0`].  Only applicable if `NVINTERNAL` is also enabled.
+
 	- `NVPARTNER`: For use by NVIDIA partners with exclusive source access.  Values consists of [`OFF`] | `ON`.
 
 	- `CUB_VERSION`: The version of CUB to use, for example [`1.8.0`].
@@ -191,9 +185,28 @@ NOTE: Along with the TensorRT OSS components, the following source packages will
 * Copy the build artifacts into the TensorRT installation directory, updating the installation.
   * TensorRT installation directory is determined as `$TRT_LIB_DIR/..`
   * Installation might require superuser privileges depending on the path and permissions of files being replaced.
+  * Installation is not supported in cross compilation scenario. Please copy the result files from `build/out` folder into the target device.
 
 	```bash
 	sudo make install
+	```
+* Verify the TensorRT samples have been installed correctly.
+
+	```bash
+	cd $TRT_LIB_DIR/../bin/
+	./sample_googlenet
+	```
+
+	If the sample was installed correctly, the following information will be printed out in the terminal.
+
+	```bash
+	[08/23/2019-22:08:57] [I] Building and running a GPU inference engine for GoogleNet
+	[08/23/2019-22:08:59] [I] [TRT] Some tactics do not have sufficient workspace memory to run. Increasing workspace size may increase performance, please check verbose output.
+	[08/23/2019-22:09:05] [I] [TRT] Detected 1 inputs and 1 output network tensors.
+	[08/23/2019-22:09:05] [I] Ran /tensorrt/bin/sample_googlenet with: 
+	[08/23/2019-22:09:05] [I] Input(s): data 
+	[08/23/2019-22:09:05] [I] Output(s): prob 
+	&&&& PASSED TensorRT.sample_googlenet # /tensorrt/bin/sample_googlenet
 	```
 
 ## Useful Resources
@@ -208,6 +221,5 @@ NOTE: Along with the TensorRT OSS components, the following source packages will
 
 ## Known Issues
 
-#### TensorRT 5.1.5
-* FP16/INT8 modes have been disabled in SampleSSD (Caffe version). Please see the [SampleSSD README](samples/opensource/sampleSSD/README.md#known-issues) for details.
-* Additionally, see the TensorRT [Release Notes](https://docs.nvidia.com/deeplearning/sdk/tensorrt-release-notes/tensorrt-5.html#rel_5-1-5).
+#### TensorRT 6.0.1
+* See [Release Notes](https://docs.nvidia.com/deeplearning/sdk/tensorrt-release-notes/index.html).

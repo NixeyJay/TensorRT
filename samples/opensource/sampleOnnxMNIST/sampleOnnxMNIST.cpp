@@ -78,7 +78,8 @@ private:
     //! \brief Parses an ONNX model for MNIST and creates a TensorRT network
     //!
     bool constructNetwork(SampleUniquePtr<nvinfer1::IBuilder>& builder,
-        SampleUniquePtr<nvinfer1::INetworkDefinition>& network, SampleUniquePtr<nvonnxparser::IParser>& parser);
+        SampleUniquePtr<nvinfer1::INetworkDefinition>& network, SampleUniquePtr<nvinfer1::IBuilderConfig>& config,
+        SampleUniquePtr<nvonnxparser::IParser>& parser);
 
     //!
     //! \brief Reads the input  and stores the result in a managed buffer
@@ -107,8 +108,15 @@ bool SampleOnnxMNIST::build()
         return false;
     }
 
-    auto network = SampleUniquePtr<nvinfer1::INetworkDefinition>(builder->createNetwork());
+    const auto explicitBatch = 1U << static_cast<uint32_t>(NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);     
+    auto network = SampleUniquePtr<nvinfer1::INetworkDefinition>(builder->createNetworkV2(explicitBatch));
     if (!network)
+    {
+        return false;
+    }
+
+    auto config = SampleUniquePtr<nvinfer1::IBuilderConfig>(builder->createBuilderConfig());
+    if (!config)
     {
         return false;
     }
@@ -119,13 +127,14 @@ bool SampleOnnxMNIST::build()
         return false;
     }
 
-    auto constructed = constructNetwork(builder, network, parser);
+    auto constructed = constructNetwork(builder, network, config, parser);
     if (!constructed)
     {
         return false;
     }
 
-    mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(builder->buildCudaEngine(*network), samplesCommon::InferDeleter());
+    mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(
+        builder->buildEngineWithConfig(*network, *config), samplesCommon::InferDeleter());
     if (!mEngine)
     {
         return false;
@@ -133,11 +142,11 @@ bool SampleOnnxMNIST::build()
 
     assert(network->getNbInputs() == 1);
     mInputDims = network->getInput(0)->getDimensions();
-    assert(mInputDims.nbDims == 3);
+    assert(mInputDims.nbDims == 4);
 
     assert(network->getNbOutputs() == 1);
     mOutputDims = network->getOutput(0)->getDimensions();
-    assert(mOutputDims.nbDims == 1);
+    assert(mOutputDims.nbDims == 2);
 
     return true;
 }
@@ -151,7 +160,8 @@ bool SampleOnnxMNIST::build()
 //! \param builder Pointer to the engine builder
 //!
 bool SampleOnnxMNIST::constructNetwork(SampleUniquePtr<nvinfer1::IBuilder>& builder,
-    SampleUniquePtr<nvinfer1::INetworkDefinition>& network, SampleUniquePtr<nvonnxparser::IParser>& parser)
+    SampleUniquePtr<nvinfer1::INetworkDefinition>& network, SampleUniquePtr<nvinfer1::IBuilderConfig>& config,
+    SampleUniquePtr<nvonnxparser::IParser>& parser)
 {
     auto parsed = parser->parseFromFile(
         locateFile(mParams.onnxFileName, mParams.dataDirs).c_str(), static_cast<int>(gLogger.getReportableSeverity()));
@@ -161,15 +171,18 @@ bool SampleOnnxMNIST::constructNetwork(SampleUniquePtr<nvinfer1::IBuilder>& buil
     }
 
     builder->setMaxBatchSize(mParams.batchSize);
-    builder->setMaxWorkspaceSize(16_MB);
-    builder->setFp16Mode(mParams.fp16);
+    config->setMaxWorkspaceSize(16_MiB);
+    if (mParams.fp16)
+    {
+        config->setFlag(BuilderFlag::kFP16);
+    }
     if (mParams.int8)
     {
-        builder->setInt8Mode(true);
+        config->setFlag(BuilderFlag::kINT8);
         samplesCommon::setAllTensorScales(network.get(), 127.0f, 127.0f);
     }
 
-    samplesCommon::enableDLA(builder.get(), mParams.dlaCore);
+    samplesCommon::enableDLA(builder.get(), config.get(), mParams.dlaCore);
 
     return true;
 }
@@ -201,7 +214,7 @@ bool SampleOnnxMNIST::infer()
     // Memcpy from host input buffers to device input buffers
     buffers.copyInputToDevice();
 
-    bool status = context->execute(mParams.batchSize, buffers.getDeviceBindings().data());
+    bool status = context->executeV2(buffers.getDeviceBindings().data());
     if (!status)
     {
         return false;
@@ -224,8 +237,8 @@ bool SampleOnnxMNIST::infer()
 //!
 bool SampleOnnxMNIST::processInput(const samplesCommon::BufferManager& buffers)
 {
-    const int inputH = mInputDims.d[1];
-    const int inputW = mInputDims.d[2];
+    const int inputH = mInputDims.d[2];
+    const int inputW = mInputDims.d[3];
 
     // Read a random digit file
     srand(unsigned(time(nullptr)));
@@ -257,7 +270,7 @@ bool SampleOnnxMNIST::processInput(const samplesCommon::BufferManager& buffers)
 //!
 bool SampleOnnxMNIST::verifyOutput(const samplesCommon::BufferManager& buffers)
 {
-    const int outputSize = mOutputDims.d[0];
+    const int outputSize = mOutputDims.d[1];
     float* output = static_cast<float*>(buffers.getHostBuffer(mParams.outputTensorNames[0]));
     float val{0.0f};
     int idx{0};
